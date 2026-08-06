@@ -296,15 +296,17 @@ FastAPI는 Swagger UI를 기본 제공하므로 서버가 기동 중인 상태�
 1. GitHub 레포지토리 생성 (`biztalk_antigravity`)
 2. 디렉토리 구조 생성
 3. `.gitignore` 작성 — `.env` 반드시 포함
+	* model="solar-pro3"
 4. Upstage API 키 발급 및 `.env` 파일 작성
-5. `requirements.txt` 작성하고 의존성의 버전(use context7)을 명시해야 함
-6. 가상환경(`venv`) 폴더를 생성하고 `requirements.txt` 명시된 의존성을 가상환경에 설치해야 함
+5. `backend/requirements.txt` 작성하고 의존성의 버전(use context7)을 명시해야 함
+6. 가상환경(`venv`) 폴더를 생성하고 `backend/requirements.txt` 명시된 의존성을 가상환경 폴더 에 설치해야 함
 
 ---
 
 ### [ ] STEP 2. 백엔드 구현 
 
 > 원칙 2 적용: 구현 전 Solar-Pro3 연동 방식을 먼저 확인하세요.
+Upstage 공식 문서를 반드시 확인하세요. [Upstage Console](https://)
 
 **구현 순서**
 
