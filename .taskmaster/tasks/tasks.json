@@ -1,0 +1,111 @@
+{
+  "master": {
+    "projectName": "업무 말투 변환기 (BizTalk Tone Converter)",
+    "version": "1.0.0",
+    "updatedAt": "2026-08-06T16:09:00+09:00"
+  },
+  "tasks": [
+    {
+      "id": 1,
+      "title": "STEP 1: 기초 환경 구축 및 의존성 설정",
+      "description": "uv 기반 Python 가상환경 구축, backend/requirements.txt 작성 및 .env, .gitignore 설정",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": [],
+      "details": "최소 파일: backend/requirements.txt, .env.example, .gitignore",
+      "testStrategy": "uv run uvicorn --version 및 패키지 설치 확인",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "requirements.txt 및 .gitignore 생성",
+          "description": "fastapi, uvicorn, langchain, langchain-upstage, python-dotenv, pydantic 명시",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "uv 가상환경 생성 및 의존성 설치",
+          "description": "uv venv 실행 후 uv pip install -r backend/requirements.txt 실행",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "STEP 2: FastAPI 백엔드 Core 및 API 라우터 구현",
+      "description": "Pydantic 모델, 프롬프트 템플릿, Solar-Pro3 연동 service 및 convert 라우터/main.py 구축",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": [1],
+      "details": "최소 파일: schemas.py, templates.py, tone_converter.py, convert.py, main.py",
+      "testStrategy": "uv run uvicorn backend.main:app --reload 후 GET /health 및 POST /api/convert 테스트",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "schemas.py 및 templates.py 작성",
+          "description": "ConvertRequest/ConvertResponse 데이터 모델 및 boss/colleague/client/team 4종 프롬프트 수립",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "tone_converter.py 작성",
+          "description": "LangChain + Upstage Solar-Pro3 모델 연동 logic 작성",
+          "status": "pending"
+        },
+        {
+          "id": 3,
+          "title": "convert.py 및 main.py 구현",
+          "description": "POST /api/convert 엔드포인트 및 Static/CORS 미들웨어 연동",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "STEP 3: Vanilla Web 프론트엔드 UI/UX 구현",
+      "description": "외부 프레임워크 없이 모던 HTML5/CSS3/Vanilla JS UI 구축",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [2],
+      "details": "최소 파일: frontend/index.html, frontend/css/style.css, frontend/js/app.js",
+      "testStrategy": "브라우저에서 index.html 오픈 후 4종 수신대상 선택, 변환 API 호출, 로딩 스피너 및 복사 기능 검증",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "index.html 및 style.css 반응형 UI 작성",
+          "description": "Inter 폰트 기반 직관적 카드 레이아웃, 수신대상 선택 버튼 및 입력/출력 텍스트 영역",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "app.js 이벤트 및 fetch API 연동",
+          "description": "수신대상 active 선택 토글, POST /api/convert 비동기 호출, 로딩 상태 및 클립보드 복사 구현",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "STEP 4: 통합 검증 및 Vercel 배포 준비",
+      "description": "프론트엔드-백엔드 연동 통합 테스트 및 Vercel 배포 설정 점검",
+      "status": "pending",
+      "priority": "low",
+      "dependencies": [3],
+      "details": "최소 파일: vercel.json, backend/main.py (static mount 및 cors)",
+      "testStrategy": "엔드투엔드 변환 동작 확인 및 vercel.json 라우팅 검증",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "로컬 통합 검증 및 E2E 테스트",
+          "description": "프론트엔드에서 4종 수신 대상별 실제 LLM 변환 및 422/500 에러 핸들링 검증",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "title": "Vercel 배포 설정 및 최종 체크리스트 점검",
+          "description": "vercel.json 구성 및 환경변수 설정 가이드 정립",
+          "status": "pending"
+        }
+      ]
+    }
+  ]
+}
