@@ -1,7 +1,7 @@
 # app/services/news_chain.py
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from app.core.config import get_llm
+from .core.config import get_llm
 
 def extract_news_keywords(news_text: str, provider: str = "groq", length_level: int = 2) -> str:
     """뉴스 본문을 입력받아 키워드 및 요약을 반환합니다."""

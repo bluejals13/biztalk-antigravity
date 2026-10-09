@@ -1,11 +1,11 @@
 # app/api/routes.py
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from app.services.recipe_chain import generate_recipe
-from app.services.tour_chain import generate_tour_info
-from app.services.news_chain import extract_news_keywords
-from app.services.search_agent import run_search_agent
-from app.core.file_history import (
+from .services.recipe_chain import generate_recipe
+from .services.tour_chain import generate_tour_info
+from .services.news_chain import extract_news_keywords
+from .services.search_agent import run_search_agent
+from .core.file_history import (
     save_file_history, 
     get_all_file_histories, 
     delete_file_history
