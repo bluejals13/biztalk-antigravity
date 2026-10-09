@@ -2,7 +2,7 @@
 from langchain_tavily import TavilySearch
 from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate
-from .core.config import get_llm
+from app.core.config import get_llm
 
 def run_search_agent(query: str, provider: str = "openai", length_level: int = 2) -> str:
     tools = [TavilySearch(max_results=3)]

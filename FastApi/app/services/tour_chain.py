@@ -2,7 +2,7 @@
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from .core.config import get_llm
+from app.core.config import get_llm
 
 def generate_tour_info(location: str, provider: str = "groq", length_level: int = 2) -> dict:
     """도시를 입력받아 랜드마크와 상세 정보를 딕셔너리로 반환합니다."""

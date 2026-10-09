@@ -1,7 +1,7 @@
 # app/services/recipe_chain.py
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from .core.config import get_llm
+from app.core.config import get_llm
 
 def generate_recipe(ingredients: str, provider: str = "groq", length_level: int = 2) -> str:
     """재료를 입력받아 레시피를 문자열로 반환합니다."""

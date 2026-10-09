@@ -4,7 +4,7 @@ from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
-from .api.routes import router
+from app.api.routes import router
 
 app = FastAPI(
     title="AI Backend Lab",
