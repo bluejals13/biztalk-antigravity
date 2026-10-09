@@ -8,16 +8,8 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "FastApi/app/main.py"
-    },
-    {
-      "src": "/health",
-      "dest": "FastApi/app/main.py"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/FastApi/frontend/$1"
+      "dest": "FastApi/app/main.py"
     }
   ]
 }
