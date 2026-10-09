@@ -26,6 +26,17 @@
             <option value="upstage">☀️ Upstage (Solar 1 Mini)</option>
         </select>
 
+        <!-- 답변 길이 슬라이더 (기본값 2) -->
+        <div style="margin: 12px 0; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <label for="length-range" style="font-size: 0.9rem; color: #374151; font-weight: bold; display: flex; justify-content: space-between;">
+                <span>📏 요약 길이 조절 (1 ~ 5)</span>
+                <span id="length-val" style="color: #2563eb; font-weight: bold;">2 (살짝 짧게, 기본)</span>
+            </label>
+            <input type="range" id="length-range" min="1" max="5" value="2" 
+                   oninput="updateLengthLabel(this.value)"
+                   style="width: 100%; margin-top: 8px; cursor: pointer;">
+        </div>
+
         <h2>📰 뉴스 키워드 추출기</h2>
         <textarea id="news-input" placeholder="뉴스 기사 본문을 길게 입력하세요..."></textarea>
         <button id="btn-submit" onclick="extractKeywords()">키워드 추출</button>
@@ -35,7 +46,8 @@
     <script>
         async function extractKeywords() {
             const input = document.getElementById('news-input').value.trim();
-            const provider = document.getElementById('model-provider').value; // 추가됨
+            const provider = document.getElementById('model-provider').value;
+            const lengthLevel = parseInt(document.getElementById('length-range').value); // 슬라이더 값 가져오기
             const btn = document.getElementById('btn-submit');
             const resultBox = document.getElementById('result-box');
             
@@ -48,13 +60,28 @@
                 const res = await fetch('/api/v1/news', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ news_text: input, provider: provider }) // provider 추가
+                    body: JSON.stringify({ 
+                        news_text: input, 
+                        provider: provider, 
+                        length_level: lengthLevel // 백엔드로 전송
+                    })
                 });
                 const data = await res.json();
                 resultBox.innerHTML = res.ok ? `🎯 ${data.keywords}` : `❌ 오류: ${data.detail}`;
             } catch (e) { resultBox.innerText = `🔌 통신 오류`; }
             
             btn.disabled = false; btn.innerText = "키워드 추출";
+        }
+
+        function updateLengthLabel(val) {
+            const labels = {
+                "1": "1 (아주 짧게/핵심만)",
+                "2": "2 (살짝 짧게, 기본)",
+                "3": "3 (보통/표준)",
+                "4": "4 (길고 상세하게)",
+                "5": "5 (최대 상세/풍부함)"
+            };
+            document.getElementById('length-val').innerText = labels[val] || val;
         }
     </script>
 </body>

@@ -1,11 +1,11 @@
 # app/services/search_agent.py
-from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_tavily import TavilySearch
 from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate
 from app.core.config import get_llm
 
 def run_search_agent(query: str, provider: str = "openai", length_level: int = 2) -> str:
-    tools = [TavilySearchResults(max_results=3)]
+    tools = [TavilySearch(max_results=3)]
     
     length_guides = {
         1: "핵심만 아주 짧고 간결하게 요약하여 답변하세요.",
@@ -27,4 +27,16 @@ def run_search_agent(query: str, provider: str = "openai", length_level: int = 2
     agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
     
     result = agent_executor.invoke({"input": query})
-    return result["output"]
+    output = result.get("output", "")
+    
+    # 만약 결과가 리스트나 딕셔너리 형태라면 문자열로 안전하게 변환
+    if isinstance(output, list):
+        text_parts = []
+        for item in output:
+            if isinstance(item, dict) and "text" in item:
+                text_parts.append(item["text"])
+            else:
+                text_parts.append(str(item))
+        return "\n".join(text_parts)
+    
+    return str(output)

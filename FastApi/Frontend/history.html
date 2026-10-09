@@ -36,9 +36,9 @@
 
         /* 버튼 디자인 스타일 */
         .action-btn { border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: background 0.2s; font-weight: 500; color: white; }
-        .download-btn { background: #10b981; } /* 에메랄드 그린 톤 다운로드 */
+        .download-btn { background: #10b981; } 
         .download-btn:hover { background: #059669; }
-        .delete-btn { background: #ef4444; } /* 레드 톤 삭제 */
+        .delete-btn { background: #ef4444; } 
         .delete-btn:hover { background: #dc2626; }
 
         /* 다크 슬레이트 톤 상세 내용 박스 */
@@ -91,6 +91,9 @@
     </div>
 
     <script>
+        // 전역으로 히스토리 데이터를 안전하게 보관할 객체 저장소
+        let historyDataMap = {};
+
         async function loadHistory() {
             const container = document.getElementById('history-container');
             container.innerHTML = '<p class="empty">기록을 불러오는 중...</p>';
@@ -100,6 +103,7 @@
                 const data = await response.json();
                 
                 container.innerHTML = '';
+                historyDataMap = {}; // 초기화
 
                 if (!data.history || data.history.length === 0) {
                     container.innerHTML = '<p class="empty">저장된 히스토리 파일이 없습니다.</p>';
@@ -107,14 +111,14 @@
                 }
 
                 data.history.forEach(item => {
+                    // 메모리 맵에 고유 ID를 키로 하여 원본 데이터 보관
+                    historyDataMap[item.id] = item;
+
                     const card = document.createElement('details');
                     card.className = 'history-card';
                     
                     const shortInput = item.input_data.length > 40 ? item.input_data.substring(0, 40) + '...' : item.input_data;
                     const renderedMarkdown = marked.parse(item.result_data || '');
-
-                    // item 객체를 안전하게 JSON 문자열로 변환하여 다운로드 함수에 전달
-                    const itemString = encodeURIComponent(JSON.stringify(item, null, 4));
 
                     card.innerHTML = `
                         <summary class="history-summary">
@@ -126,7 +130,7 @@
                             </div>
                             <div class="summary-right">
                                 <span class="time-label">${item.created_at}</span>
-                                <button class="action-btn download-btn" onclick="downloadHistory(event, '${itemString}', '${item.id}')">다운</button>
+                                <button class="action-btn download-btn" onclick="downloadHistory(event, '${item.id}')">다운</button>
                                 <button class="action-btn delete-btn" onclick="deleteHistory(event, '${item.id}')">삭제</button>
                             </div>
                         </summary>
@@ -144,14 +148,17 @@
             }
         }
 
-        // 다운로드 기능 함수
-        function downloadHistory(event, encodedItemStr, fileId) {
+        // ID만 받아와서 전역 맵에서 데이터를 안전하게 꺼내 다운로드
+        function downloadHistory(event, fileId) {
             event.stopPropagation(); // 아코디언 펼쳐짐 방지
 
             try {
-                const itemData = JSON.parse(decodeURIComponent(encodedItemStr));
+                const itemData = historyDataMap[fileId];
+                if (!itemData) {
+                    alert("데이터를 찾을 수 없습니다.");
+                    return;
+                }
                 
-                // 다운로드용 파일 내용 포맷 구성 (마크다운 친화적 형식)
                 const fileContent = `=== [AI Backend Lab History Record] ===
 - 작업 유형: ${itemData.task_type.toUpperCase()}
 - 사용 모델: ${itemData.provider}
@@ -164,7 +171,6 @@ ${itemData.input_data}
 ${itemData.result_data}
 `;
 
-                // Blob 생성 및 다운로드 링크 트리거
                 const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
