@@ -1,5 +1,6 @@
 # app/main.py
 from fastapi import FastAPI
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
@@ -20,6 +21,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return Response(status_code=204)
+
 # API 라우터 등록
 app.include_router(router, prefix="/api/v1")
 
@@ -28,7 +33,8 @@ def health_check():
     return {"status": "ok"}
 
 # --- 정적 파일(프론트엔ed) 서빙 ---
-# FastApi 폴더 바로 아래에 있는 'frontend' 폴더를 안전하게 참조
+# 현재 파일(main.py)이 app 폴더 안에 있으므로, parent는 app, parent.parent는 FastApi(루트)가 됩니다.
+# 만약 frontend 폴더가 FastApi 바로 아래에 있다면 아래와 같이 잡아야 정확합니다.
 frontend_path = Path(__file__).resolve().parent.parent / "frontend"
 
 # 폴더 존재 여부 확인 및 마운트
