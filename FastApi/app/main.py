@@ -32,16 +32,23 @@ app.include_router(router, prefix="/api/v1")
 def health_check():
     return {"status": "ok"}
 
-# --- 정적 파일(프론트엔ed) 서빙 ---
-# 현재 파일(main.py)이 app 폴더 안에 있으므로, parent는 app, parent.parent는 FastApi(루트)가 됩니다.
-# 만약 frontend 폴더가 FastApi 바로 아래에 있다면 아래와 같이 잡아야 정확합니다.
-frontend_path = Path(__file__).resolve().parent.parent / "frontend"
+# --- 정적 파일(프론트엔드) 서빙 경로 안전 장치 ---
+possible_paths = [
+    Path(__file__).resolve().parent.parent / "frontend",  # FastApi/frontend
+    Path(__file__).resolve().parent / "frontend",          # app/frontend
+    Path.cwd() / "frontend",                               # 현재 작업 디렉토리/frontend
+    Path.cwd() / "FastApi" / "frontend"
+]
+
+frontend_path = None
+for p in possible_paths:
+    if p.exists() and p.is_dir():
+        frontend_path = p
+        break
 
 # 폴더 존재 여부 확인 및 마운트
-if frontend_path.exists():
+if frontend_path:
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
     print(f"✅ 프론트엔드 경로 연결 완료: {frontend_path}")
 else:
-    print(f"⚠️ 경고: {frontend_path} 폴더를 찾을 수 없습니다. FastApi 폴더 내부에 'frontend' 폴더를 생성해주세요.")
-
-
+    print(f"⚠️ 경고: frontend 폴더를 찾을 수 없습니다. 경로들을 확인해주세요.")
