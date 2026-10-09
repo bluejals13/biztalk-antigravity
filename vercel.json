@@ -1,35 +1,10 @@
 {
   "version": 2,
   "builds": [
-    {
-      "src": "app/main.py",
-      "use": "@vercel/python"
-    }
+    { "src": "app/main.py", "use": "@vercel/python" }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "app/main.py"
-    },
-    {
-      "src": "/docs",
-      "dest": "app/main.py"
-    },
-    {
-      "src": "/openapi.json",
-      "dest": "app/main.py"
-    },
-    {
-      "src": "/health",
-      "dest": "app/main.py"
-    },
-    {
-      "src": "/favicon.ico",
-      "dest": "app/main.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "app/main.py"
-    }
+    { "src": "/api/(.*)", "dest": "app/main.py" },
+    { "src": "/(.*)", "dest": "app/main.py" }
   ]
 }
