@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 요리사</title>
+    <style>
+        body { font-family: sans-serif; background: #f3f4f6; padding: 2rem; display: flex; justify-content: center; }
+        .container { max-width: 600px; width: 100%; background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .nav { margin-bottom: 20px; }
+        .nav a { color: #3b82f6; text-decoration: none; font-weight: bold; }
+        select, input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; }
+        button { background: #3b82f6; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; width: 100%; font-size: 1rem; }
+        button:disabled { background: #9ca3af; }
+        .result-box { margin-top: 20px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display: none; white-space: pre-wrap; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav">← <a href="/">홈으로 돌아가기</a></div>
+
+        <select id="model-provider">
+            <option value="groq">🚀 Groq (Fast & Open Source)</option>
+            <option value="openai">🧠 OpenAI (GPT-4o-mini)</option>
+            <option value="gemini">⚡ Google (Gemini 1.5 Flash)</option>
+            <option value="upstage">☀️ Upstage (Solar 1 Mini)</option>
+        </select>
+
+        <!-- 답변 길이 슬라이더 (기본값 2) -->
+        <div style="margin: 12px 0; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <label for="length-range" style="font-size: 0.9rem; color: #374151; font-weight: bold; display: flex; justify-content: space-between;">
+                <span>📏 답변 길이 조절 (1 ~ 5)</span>
+                <span id="length-val" style="color: #2563eb; font-weight: bold;">2 (살짝 짧게, 기본)</span>
+            </label>
+            <input type="range" id="length-range" min="1" max="5" value="2" 
+                   oninput="updateLengthLabel(this.value)"
+                   style="width: 100%; margin-top: 8px; cursor: pointer;">
+        </div>
+
+        <h2>🍳 AI 요리사</h2>
+        <input type="text" id="recipe-input" placeholder="재료 입력 (예: 계란, 파, 굴소스)">
+        <button id="btn-submit" onclick="generateRecipe()">레시피 생성</button>
+        <div id="result-box" class="result-box"></div>
+    </div>
+
+    <script>
+        async function generateRecipe() {
+            const input = document.getElementById('recipe-input').value.trim();
+            const provider = document.getElementById('model-provider').value;
+            const lengthLevel = parseInt(document.getElementById('length-range').value);
+            const btn = document.getElementById('btn-submit');
+            const resultBox = document.getElementById('result-box');
+            
+            if(!input) return alert("재료를 입력하세요.");
+
+            btn.disabled = true; btn.innerText = "생성 중...";
+            resultBox.style.display = 'block'; resultBox.innerText = "⏳ AI가 요리 중입니다...";
+
+            try {
+                const res = await fetch('/api/v1/recipe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ingredients: input, provider: provider, length_level: lengthLevel })
+                });
+                const data = await res.json();
+                resultBox.innerHTML = res.ok ? `<strong>[추천 요리]</strong><br><br>${data.result}` : `❌ 오류: ${data.detail}`;
+            } catch (e) { resultBox.innerText = `🔌 통신 오류`; }
+            
+            btn.disabled = false; btn.innerText = "레시피 생성";
+        }
+
+        function updateLengthLabel(val) {
+            const labels = {
+                "1": "1 (아주 짧게/핵심만)",
+                "2": "2 (살짝 짧게, 기본)",
+                "3": "3 (보통/표준)",
+                "4": "4 (길고 상세하게)",
+                "5": "5 (최대 상세/풍부함)"
+            };
+            document.getElementById('length-val').innerText = labels[val] || val;
+        }
+    </script>
+</body>
+</html>

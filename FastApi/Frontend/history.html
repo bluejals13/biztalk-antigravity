@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Backend Lab - History</title>
+    <!-- 마크다운 변환을 위한 marked.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #f3f4f6; padding: 2.5rem 1rem; margin: 0; }
+        .container { max-width: 1150px; width: 100%; margin: 0 auto; }
+        
+        h1 { color: #111827; margin-bottom: 1.5rem; text-align: center; font-size: 1.8rem; }
+        .nav-link { display: inline-block; margin-bottom: 20px; color: #2563eb; text-decoration: none; font-weight: 500; }
+        .nav-link:hover { text-decoration: underline; }
+        
+        /* 히스토리 카드 스타일 */
+        details.history-card { background: white; border-radius: 14px; margin-bottom: 16px; box-shadow: 0 3px 6px rgba(0,0,0,0.06); overflow: hidden; border: 1px solid #e5e7eb; transition: all 0.2s; }
+        details.history-card[open] { border-color: #3b82f6; box-shadow: 0 6px 16px rgba(59, 130, 246, 0.12); }
+        
+        /* 요약 바 */
+        summary.history-summary { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; cursor: pointer; list-style: none; background: #fff; user-select: none; }
+        summary.history-summary::-webkit-details-marker { display: none; }
+        summary.history-summary:hover { background: #fafafa; }
+
+        .summary-info { display: flex; align-items: center; gap: 14px; flex-grow: 1; overflow: hidden; }
+        .badge { background: #e0e7ff; color: #3730a3; padding: 5px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; white-space: nowrap; flex-shrink: 0; }
+        
+        .model-text { color: #4b5563; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; }
+        .model-text b { color: #111827; }
+        
+        .question-text { color: #4b5563; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
+        .question-text b { color: #111827; }
+
+        .summary-right { display: flex; align-items: center; gap: 12px; margin-left: 15px; flex-shrink: 0; }
+        .time-label { color: #9ca3af; font-size: 0.85rem; white-space: nowrap; }
+
+        /* 버튼 디자인 스타일 */
+        .action-btn { border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: background 0.2s; font-weight: 500; color: white; }
+        .download-btn { background: #10b981; } /* 에메랄드 그린 톤 다운로드 */
+        .download-btn:hover { background: #059669; }
+        .delete-btn { background: #ef4444; } /* 레드 톤 삭제 */
+        .delete-btn:hover { background: #dc2626; }
+
+        /* 다크 슬레이트 톤 상세 내용 박스 */
+        .content-box { 
+            background: #1e293b; 
+            padding: 24px 28px; 
+            border-top: 1px solid #334155; 
+            font-size: 0.9rem; 
+            line-height: 1.75; 
+            color: #e2e8f0; 
+        }
+        
+        .input-preview { 
+            margin-bottom: 18px; 
+            padding-bottom: 14px; 
+            border-bottom: 1px dashed #334155; 
+            color: #94a3b8; 
+            font-size: 0.85rem; 
+            line-height: 1.5; 
+        }
+        
+        .answer-title {
+            margin-bottom: 12px; 
+            font-weight: bold; 
+            color: #38bdf8; 
+            font-size: 0.95rem;
+        }
+
+        /* 마크다운 내부 요소 */
+        .markdown-body { color: #e2e8f0; }
+        .markdown-body h3, .markdown-body h4 { color: #38bdf8; margin-top: 18px; margin-bottom: 8px; font-weight: 600; }
+        .markdown-body ul, .markdown-body ol { padding-left: 20px; margin-bottom: 12px; }
+        .markdown-body li { margin-bottom: 4px; }
+        .markdown-body p { margin-bottom: 10px; }
+        .markdown-body table { width: 100%; border-collapse: collapse; margin: 14px 0; }
+        .markdown-body th, .markdown-body td { border: 1px solid #334155; padding: 8px 12px; font-size: 0.85rem; color: #e2e8f0; }
+        .markdown-body th { background: #0f172a; color: #38bdf8; }
+
+        .empty { text-align: center; color: #6b7280; margin-top: 50px; font-size: 1.15rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="nav-link">← 홈으로 돌아가기</a>
+        <h1>📜 AI 실행 기록 히스토리</h1>
+        <div style="text-align: right; margin-bottom: 18px;">
+            <button onclick="loadHistory()" style="padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 0.95rem;">새로고침</button>
+        </div>
+        <div id="history-container"></div>
+    </div>
+
+    <script>
+        async function loadHistory() {
+            const container = document.getElementById('history-container');
+            container.innerHTML = '<p class="empty">기록을 불러오는 중...</p>';
+
+            try {
+                const response = await fetch('/api/v1/history');
+                const data = await response.json();
+                
+                container.innerHTML = '';
+
+                if (!data.history || data.history.length === 0) {
+                    container.innerHTML = '<p class="empty">저장된 히스토리 파일이 없습니다.</p>';
+                    return;
+                }
+
+                data.history.forEach(item => {
+                    const card = document.createElement('details');
+                    card.className = 'history-card';
+                    
+                    const shortInput = item.input_data.length > 40 ? item.input_data.substring(0, 40) + '...' : item.input_data;
+                    const renderedMarkdown = marked.parse(item.result_data || '');
+
+                    // item 객체를 안전하게 JSON 문자열로 변환하여 다운로드 함수에 전달
+                    const itemString = encodeURIComponent(JSON.stringify(item, null, 4));
+
+                    card.innerHTML = `
+                        <summary class="history-summary">
+                            <div class="summary-info">
+                                <span class="badge">${item.task_type.toUpperCase()}</span>
+                                <span class="model-text">모델: <b>${item.provider}</b></span>
+                                <span style="color: #9ca3af; flex-shrink: 0;">|</span>
+                                <span class="question-text">질문: <b>${escapeHtml(shortInput)}</b></span>
+                            </div>
+                            <div class="summary-right">
+                                <span class="time-label">${item.created_at}</span>
+                                <button class="action-btn download-btn" onclick="downloadHistory(event, '${itemString}', '${item.id}')">다운</button>
+                                <button class="action-btn delete-btn" onclick="deleteHistory(event, '${item.id}')">삭제</button>
+                            </div>
+                        </summary>
+                        <div class="content-box">
+                            <div class="input-preview"><b>전체 입력 내용:</b> ${escapeHtml(item.input_data)}</div>
+                            <div class="answer-title">상세 전체 대답:</div>
+                            <div class="markdown-body">${renderedMarkdown}</div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (error) {
+                console.error("히스토리 로드 실패:", error);
+                container.innerHTML = '<p class="empty" style="color: red;">히스토리를 불러오는 중 오류가 발생했습니다.</p>';
+            }
+        }
+
+        // 다운로드 기능 함수
+        function downloadHistory(event, encodedItemStr, fileId) {
+            event.stopPropagation(); // 아코디언 펼쳐짐 방지
+
+            try {
+                const itemData = JSON.parse(decodeURIComponent(encodedItemStr));
+                
+                // 다운로드용 파일 내용 포맷 구성 (마크다운 친화적 형식)
+                const fileContent = `=== [AI Backend Lab History Record] ===
+- 작업 유형: ${itemData.task_type.toUpperCase()}
+- 사용 모델: ${itemData.provider}
+- 생성 시간: ${itemData.created_at}
+
+[전체 입력 내용]
+${itemData.input_data}
+
+[상세 전체 대답]
+${itemData.result_data}
+`;
+
+                // Blob 생성 및 다운로드 링크 트리거
+                const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${fileId.replace('.json', '')}_${itemData.task_type}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error("다운로드 처리 오류:", error);
+                alert("파일 다운로드 중 오류가 발생했습니다.");
+            }
+        }
+
+        async function deleteHistory(event, fileId) {
+            event.stopPropagation();
+
+            if (!confirm(`정말 이 기록 파일(${fileId})을 삭제하시겠습니까? 로컬 폴더에서도 영구히 제거됩니다.`)) return;
+
+            try {
+                const response = await fetch(`/api/v1/history/${fileId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert("성공적으로 삭제되었습니다.");
+                    loadHistory();
+                } else {
+                    alert("삭제에 실패했습니다.");
+                }
+            } catch (error) {
+                console.error("삭제 요청 오류:", error);
+                alert("서버 통신 중 오류가 발생했습니다.");
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        window.onload = loadHistory;
+    </script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>뉴스 키워드 추출</title>
+    <style>
+        body { font-family: sans-serif; background: #f3f4f6; padding: 2rem; display: flex; justify-content: center; } 
+        .container { max-width: 600px; width: 100%; background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); } 
+        .nav { margin-bottom: 20px; } 
+        .nav a { color: #3b82f6; text-decoration: none; font-weight: bold; } 
+        select, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; }
+        textarea { height: 150px; resize: vertical; } 
+        button { background: #3b82f6; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; width: 100%; font-size: 1rem; } 
+        button:disabled { background: #9ca3af; } 
+        .result-box { margin-top: 20px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display: none; white-space: pre-wrap; line-height: 1.5; font-size: 1.2rem; font-weight: bold; color: #047857; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav">← <a href="/">홈으로 돌아가기</a></div>
+
+        <select id="model-provider">
+            <option value="groq">🚀 Groq (Fast & Open Source)</option>
+            <option value="openai">🧠 OpenAI (GPT-4o-mini)</option>
+            <option value="gemini">⚡ Google (Gemini 1.5 Flash)</option>
+            <option value="upstage">☀️ Upstage (Solar 1 Mini)</option>
+        </select>
+
+        <h2>📰 뉴스 키워드 추출기</h2>
+        <textarea id="news-input" placeholder="뉴스 기사 본문을 길게 입력하세요..."></textarea>
+        <button id="btn-submit" onclick="extractKeywords()">키워드 추출</button>
+        <div id="result-box" class="result-box"></div>
+    </div>
+
+    <script>
+        async function extractKeywords() {
+            const input = document.getElementById('news-input').value.trim();
+            const provider = document.getElementById('model-provider').value; // 추가됨
+            const btn = document.getElementById('btn-submit');
+            const resultBox = document.getElementById('result-box');
+            
+            if(input.length < 10) return alert("기사 내용을 조금 더 길게 입력하세요.");
+
+            btn.disabled = true; btn.innerText = "분석 중...";
+            resultBox.style.display = 'block'; resultBox.innerText = "⏳ AI가 문맥을 분석하고 있습니다...";
+
+            try {
+                const res = await fetch('/api/v1/news', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ news_text: input, provider: provider }) // provider 추가
+                });
+                const data = await res.json();
+                resultBox.innerHTML = res.ok ? `🎯 ${data.keywords}` : `❌ 오류: ${data.detail}`;
+            } catch (e) { resultBox.innerText = `🔌 통신 오류`; }
+            
+            btn.disabled = false; btn.innerText = "키워드 추출";
+        }
+    </script>
+</body>
+</html>

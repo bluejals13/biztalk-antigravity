@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>웹 검색 에이전트</title>
+    <style>
+        body { font-family: sans-serif; background: #f3f4f6; padding: 2rem; display: flex; justify-content: center; } 
+        .container { max-width: 600px; width: 100%; background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); } 
+        .nav { margin-bottom: 20px; } 
+        .nav a { color: #3b82f6; text-decoration: none; font-weight: bold; } 
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 1rem; } 
+        button { background: #3b82f6; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; width: 100%; font-size: 1rem; font-weight: bold; } 
+        button:disabled { background: #9ca3af; } 
+        .result-box { margin-top: 20px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display: none; white-space: pre-wrap; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav">← <a href="/">홈으로 돌아가기</a></div>
+
+        <h2>🌐 실시간 웹 검색 에이전트</h2>
+        
+        <select id="model-provider">
+            <option value="openai">🧠 OpenAI (가장 안정적)</option>
+            <option value="gemini">⚡ Google Gemini</option>
+        </select>
+
+        <!-- 답변 길이 슬라이더 (기본값 2) -->
+        <div style="margin: 12px 0; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <label for="length-range" style="font-size: 0.9rem; color: #374151; font-weight: bold; display: flex; justify-content: space-between;">
+                <span>📏 답변 길이 조절 (1 ~ 5)</span>
+                <span id="length-val" style="color: #2563eb; font-weight: bold;">2 (살짝 짧게, 기본)</span>
+            </label>
+            <input type="range" id="length-range" min="1" max="5" value="2" 
+                   oninput="updateLengthLabel(this.value)"
+                   style="width: 100%; margin-top: 8px; cursor: pointer;">
+        </div>
+
+        <input type="text" id="search-input" placeholder="최신 정보 질문 (예: 어제 열린 애플 발표회 핵심 요약해줘)">
+        <button id="btn-submit" onclick="runSearch()">검색 및 답변 생성</button>
+        <div id="result-box" class="result-box"></div>
+    </div>
+
+    <script>
+        async function runSearch() {
+            const input = document.getElementById('search-input').value.trim();
+            const provider = document.getElementById('model-provider').value;
+            const lengthLevel = parseInt(document.getElementById('length-range').value);
+            const btn = document.getElementById('btn-submit');
+            const resultBox = document.getElementById('result-box');
+            
+            if(!input) return alert("질문을 입력하세요.");
+
+            btn.disabled = true; btn.innerText = "웹 검색 및 분석 중...";
+            resultBox.style.display = 'block'; resultBox.innerText = `⏳ [${provider}] 모델이 Tavily를 통해 최신 웹 문서를 읽고 있습니다...`;
+
+            try {
+                const res = await fetch('/api/v1/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: input, provider: provider, length_level: lengthLevel })
+                });
+                const data = await res.json();
+                resultBox.innerHTML = res.ok ? `<strong>[답변]</strong><br><br>${data.result}` : `❌ 오류: ${data.detail}`;
+            } catch (e) { resultBox.innerText = `🔌 통신 오류`; }
+            
+            btn.disabled = false; btn.innerText = "검색 및 답변 생성";
+        }
+
+        function updateLengthLabel(val) {
+            const labels = {
+                "1": "1 (아주 짧게/핵심만)",
+                "2": "2 (살짝 짧게, 기본)",
+                "3": "3 (보통/표준)",
+                "4": "4 (길고 상세하게)",
+                "5": "5 (최대 상세/풍부함)"
+            };
+            document.getElementById('length-val').innerText = labels[val] || val;
+        }
+    </script>
+</body>
+</html>
