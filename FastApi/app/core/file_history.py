@@ -1,67 +1,100 @@
 # core/file_history.py
-import os
-import json
+from app.database import SessionLocal
+from app.models import HistoryRecord
 from datetime import datetime
-from pathlib import Path
-
-# 프로젝트 루트 내의 history_records 폴더 지정
-HISTORY_DIR = Path("history_records")
-HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+import uuid
 
 MAX_HISTORY_COUNT = 20  # 최대 유지 개수
 
-def save_file_history(task_type: str, provider: str, input_data: str, result_data: str) -> str:
-    """결과를 지정된 폴더에 JSON 파일로 저장하며, 최대 20개를 초과하면 가장 오래된 기록을 삭제합니다."""
-    
-    # 1. 현재 저장된 히스토리 파일들을 이름순(시간순)으로 정렬하여 가져옴
-    files = sorted(HISTORY_DIR.glob("*.json"))
-    
-    # 2. 개수가 20개 이상이면, 새로운 파일이 들어올 자리를 만들기 위해 가장 오래된 파일 삭제
-    while len(files) >= MAX_HISTORY_COUNT:
-        oldest_file = files.pop(0)  # 가장 오래된 파일 선택
-        try:
-            if oldest_file.exists():
-                oldest_file.unlink()  # 파일 삭제
-        except Exception as e:
-            print(f"⚠️ 오래된 히스토리 파일 삭제 실패: {e}")
 
-    # 3. 새로운 히스토리 파일 생성
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:17]
-    filename = f"{timestamp}_{task_type}.json"
-    file_path = HISTORY_DIR / filename
-    
-    record = {
-        "id": filename,  # 파일명을 고유 ID로 사용
-        "task_type": task_type,
-        "provider": provider,
-        "input_data": input_data,
-        "result_data": str(result_data),
-        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
-    
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(record, f, ensure_ascii=False, indent=4)
-        
-    return filename
+def save_file_history(
+    task_type: str, provider: str, input_data: str, result_data: str
+) -> str:
+  """DB에 기록을 저장하며, 최대 20개를 초과하면 가장 오래된 기록을 삭제합니다."""
+  db = SessionLocal()
+  try:
+    # 1. 개수가 20개 이상인지 확인하고 초과분(가장 오래된 것) 삭제
+    count = db.query(HistoryRecord).count()
+    if count >= MAX_HISTORY_COUNT:
+      # 생성일이 가장 오래된 항목들 조회해서 초과된 만큼 삭제
+      oldest_records = (
+          db.query(HistoryRecord)
+          .order_by(HistoryRecord.created_at.asc())
+          .limit(count - MAX_HISTORY_COUNT + 1)
+          .all()
+      )
+      for old_rec in oldest_records:
+        db.delete(old_rec)
+      db.commit()
+
+    # 2. 새로운 히스토리 생성 (기존 파일명 규칙인 uuid 혹은 타임스탬프 활용)
+    record_id = (
+        f"{datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:17]}_{task_type}"
+    )
+
+    record = HistoryRecord(
+        id=record_id,
+        task_type=task_type,
+        provider=provider,
+        input_data=input_data,
+        result_data=str(result_data),
+    )
+    db.add(record)
+    db.commit()
+
+    return f"{record_id}.json"  # 프론트엔드 호환용 리턴
+  except Exception as e:
+    db.rollback()
+    print(f"⚠️ DB 히스토리 저장 실패: {e}")
+    raise e
+  finally:
+    db.close()
+
 
 def get_all_file_histories():
-    """history_records 폴더 내의 모든 기록을 최신순으로 읽어옵니다."""
-    records = []
-    if not HISTORY_DIR.exists():
-        return records
-        
-    for file_path in sorted(HISTORY_DIR.glob("*.json"), reverse=True):
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                records.append(json.load(f))
-        except Exception:
-            continue
-    return records
+  """DB에서 모든 기록을 최신순으로 읽어옵니다."""
+  db = SessionLocal()
+  try:
+    records = (
+        db.query(HistoryRecord)
+        .order_by(HistoryRecord.created_at.desc())
+        .all()
+    )
+    history_list = []
+    for r in records:
+      history_list.append({
+          "id": f"{r.id}.json",
+          "task_type": r.task_type,
+          "provider": r.provider,
+          "input_data": r.input_data,
+          "result_data": r.result_data,
+          "created_at": (
+              r.created_at.strftime("%Y-%m-%d %H:%M:%S")
+              if r.created_at
+              else ""
+          ),
+      })
+    return history_list
+  finally:
+    db.close()
+
 
 def delete_file_history(file_id: str) -> bool:
-    """지정된 파일 ID(파일명)의 기록 파일을 삭제합니다."""
-    file_path = HISTORY_DIR / file_id
-    if file_path.exists() and file_path.is_file():
-        file_path.unlink()
-        return True
+  """지정된 ID의 기록을 DB에서 삭제합니다."""
+  db = SessionLocal()
+  try:
+    clean_id = file_id.replace(".json", "")
+    record = (
+        db.query(HistoryRecord).filter(HistoryRecord.id == clean_id).first()
+    )
+    if record:
+      db.delete(record)
+      db.commit()
+      return True
     return False
+  except Exception as e:
+    db.rollback()
+    print(f"⚠️ DB 히스토리 삭제 실패: {e}")
+    return False
+  finally:
+    db.close()

@@ -21,8 +21,16 @@
         <h2>🌐 실시간 웹 검색 에이전트</h2>
         
         <select id="model-provider">
-            <option value="openai">🧠 OpenAI (가장 안정적)</option>
-            <option value="gemini">⚡ Google Gemini</option>
+            <!-- 기존 클라우드 모델 (완벽 유지) -->
+            <option value="groq">🚀 Groq (Fast & Open Source)</option>
+            <option value="openai">🧠 OpenAI (GPT-4o-mini)</option>
+            <option value="gemini">⚡ Google (Gemini 1.5 Flash)</option>
+            <option value="upstage">☀️ Upstage (Solar 1 Mini)</option>
+
+            <!-- ✨ 새로 추가된 사내 로컬 모델 -->
+            <option value="ollama_qwen3">🦙 사내망 (Qwen 3: 8B)</option>
+            <option value="ollama_qwen25">🦙 사내망 (Qwen 2.5: 0.5B)</option>
+            <option value="ollama_deepseek">🧠 사내망 (DeepSeek-R1: 8B)</option>
         </select>
 
         <!-- 답변 길이 슬라이더 (기본값 2) -->
