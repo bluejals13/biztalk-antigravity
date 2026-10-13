@@ -10,7 +10,7 @@ from langchain_ollama import ChatOllama
 load_dotenv()
 
 # 💡 사내(로컬) Ollama 서버 주소 고정 설정
-OLLAMA_BASE_URL = "http://192.168.45.218:11434"
+OLLAMA_BASE_URL = "http://192.168.45.175:11434"
 
 def get_llm(provider: str = "groq", temperature: float = 0.3):
     """provider 이름에 따라 알맞은 LLM 인스턴스를 반환합니다."""

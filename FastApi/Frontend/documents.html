@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>사내 지식베이스 RAG 챗봇</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #f1f5f9; margin: 0; display: flex; height: 100vh; padding: 20px; box-sizing: border-box; }
+        .layout-container { display: flex; gap: 20px; width: 100%; max-width: 1400px; margin: 0 auto; }
+        
+        /* 💡 3비율: 좌측 파일 패널 */
+        .left-panel { flex: 3; background: white; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .upload-area { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 1.5rem 1rem; text-align: center; cursor: pointer; transition: 0.2s; background: #f8fafc; margin-bottom: 15px; }
+        .upload-area:hover { border-color: #3b82f6; background: #eff6ff; }
+        .file-list-box { flex: 1; overflow-y: auto; border-top: 1px solid #e2e8f0; padding-top: 15px; }
+        .file-item { font-size: 0.9rem; padding: 8px 10px; background: #f8fafc; border-radius: 6px; margin-bottom: 8px; color: #334155; display: flex; align-items: center; border: 1px solid #e2e8f0; }
+        .file-item::before { content: '📄'; margin-right: 8px; }
+
+        /* 💡 7비율: 우측 챗봇 패널 */
+        .right-panel { flex: 7; background: white; border-radius: 12px; display: flex; flex-direction: column; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; }
+        .chat-header { padding: 16px 20px; background: #2563eb; color: white; font-weight: bold; font-size: 1.1rem; display: flex; justify-content: space-between; }
+        .chat-header a { color: white; text-decoration: none; font-size: 0.9rem; font-weight: normal; border: 1px solid white; padding: 4px 8px; border-radius: 4px; }
+        .chat-box { flex: 1; padding: 20px; overflow-y: auto; background: #f8fafc; display: flex; flex-direction: column; gap: 15px; }
+        
+        /* 말풍선 스타일 */
+        .msg-bubble { max-width: 80%; padding: 12px 16px; border-radius: 12px; line-height: 1.5; font-size: 0.95rem; }
+        .msg-user { align-self: flex-end; background: #2563eb; color: white; border-bottom-right-radius: 2px; }
+        .msg-bot { align-self: flex-start; background: white; color: #1e293b; border: 1px solid #e2e8f0; border-bottom-left-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .msg-bot p { margin: 0 0 8px 0; }
+        .msg-bot p:last-child { margin: 0; }
+
+        /* 입력창 영역 */
+        .input-area { padding: 16px 20px; background: white; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; }
+        .input-area input { flex: 1; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 24px; font-size: 1rem; outline: none; transition: border 0.2s; }
+        .input-area input:focus { border-color: #2563eb; }
+        .input-area button { background: #2563eb; color: white; border: none; padding: 0 20px; border-radius: 24px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .input-area button:hover { background: #1d4ed8; }
+        .input-area button:disabled { background: #94a3b8; cursor: not-allowed; }
+        
+        /* 공통 버튼 */
+        .btn-upload { background: #10b981; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="layout-container">
+
+    <!-- 🟢 [좌측 3 비율] 문서 관리 패널 -->
+    <div class="left-panel">
+    <a href="index.html" class="nav-link">← 홈으로 돌아가기</a>
+        <h3 style="margin-top: 0; color: #1e293b;">📂 지식베이스 관리</h3>
+        
+        <label class="upload-area">
+            <div id="file-name" style="font-weight:bold; color: #475569;">PDF 클릭/드래그 업로드</div>
+            <input type="file" id="pdf-upload" accept=".pdf" style="display: none;" onchange="updateFileName()">
+        </label>
+        <button id="upload-btn" class="btn-upload" onclick="uploadFile()">벡터 DB에 학습시키기</button>
+        
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #64748b; margin-bottom: 10px;">
+            <span>현재 학습된 파일 목록</span>
+            <span id="capacity-info">0MB / 100MB</span>
+        </div>
+        
+        <div class="file-list-box" id="file-list">
+            <!-- JS로 파일 리스트가 렌더링 됩니다 -->
+            <div style="text-align: center; color: #94a3b8; font-size: 0.9rem; margin-top: 20px;">서버에서 파일을 불러오는 중...</div>
+        </div>
+    </div>
+
+    <!-- 🔵 [우측 7 비율] 챗봇 패널 -->
+    <div class="right-panel">
+        <div class="chat-header">
+            <span>💬 로컬 Ollama RAG 챗봇</span>
+
+<!-- 💡 질문자님이 원하셨던 모델 선택 드롭다운 적용! -->
+            <select id="model-provider" style="padding: 4px 8px; border-radius: 6px; border: none; font-size: 0.9rem; margin-left: auto; margin-right: 15px; cursor: pointer;">
+                <optgroup label="사내 로컬 모델 (Ollama)">
+                    <option value="ollama_qwen3" selected>🦙 Qwen 3: 8B</option>
+                    <option value="ollama_qwen25">🦙 Qwen 2.5: 0.5B</option>
+                    <option value="ollama_deepseek">🧠 DeepSeek-R1: 8B</option>
+                </optgroup>
+                <optgroup label="외부 클라우드 API">
+                    <option value="groq">🚀 Groq (Fast)</option>
+                    <option value="openai">🧠 OpenAI (GPT-4o)</option>
+                    <option value="gemini">⚡ Gemini 1.5 Flash</option>
+                    <option value="upstage">☀️ Upstage (Solar)</option>
+                </optgroup>
+            </select>
+
+            <a href="index.html">🏠 메인으로</a>
+        </div>
+        
+        <div class="chat-box" id="chat-box">
+            <div class="msg-bubble msg-bot">안녕하세요! 좌측에 업로드된 사내 문서들을 바탕으로 답변해 드립니다. 무엇이 궁금하신가요?</div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="chat-input" placeholder="문서 내용에 대해 질문해 보세요 (Enter)" onkeypress="handleEnter(event)">
+            <button id="send-btn" onclick="sendMessage()">전송</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // 페이지 로드 시 파일 목록 불러오기
+    document.addEventListener("DOMContentLoaded", loadFileList);
+
+    // 1. 파일 목록 불러오기 API
+    async function loadFileList() {
+        try {
+            const res = await fetch('/api/v1/documents/files');
+            const data = await res.json();
+            
+            document.getElementById('capacity-info').innerText = `${data.capacity_mb}MB / ${data.max_capacity_mb}MB`;
+            
+            const fileListEl = document.getElementById('file-list');
+            fileListEl.innerHTML = '';
+            
+            if (data.files.length === 0) {
+                fileListEl.innerHTML = '<div style="text-align: center; color: #94a3b8; margin-top: 20px;">업로드된 문서가 없습니다.</div>';
+                return;
+            }
+            
+            data.files.forEach(file => {
+                fileListEl.innerHTML += `<div class="file-item" style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #e2e8f0;">
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; color: #334155; font-size: 0.9rem;" title="${file}">
+                        📄 ${file}
+                    </span>
+                    <div style="display: flex; gap: 5px;">
+                        <button onclick="downloadFile('${file}')" style="background:#10b981; color:white; border:none; padding:5px 10px; border-radius:4px; font-size:0.8rem; cursor:pointer;">⬇️ 다운</button>
+                        <button onclick="deleteFile('${file}')" style="background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:4px; font-size:0.8rem; cursor:pointer;">🗑️ 삭제</button>
+                    </div>
+                </div>`;
+            });
+        } catch (e) {
+            console.error("파일 목록 로드 실패", e);
+        }
+    }
+
+    // ✨ 신규: 파일 다운로드 함수
+    function downloadFile(filename) {
+        window.location.href = `/api/v1/documents/files/${encodeURIComponent(filename)}`;
+    }
+
+    // ✨ 신규: 파일 삭제 함수
+    async function deleteFile(filename) {
+        if (!confirm(`'${filename}' 파일을 삭제하시겠습니까?\n(AI 지식베이스에서도 영구 삭제됩니다)`)) return;
+        
+        try {
+            const res = await fetch(`/api/v1/documents/files/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+            const data = await res.json();
+            
+            if (res.ok) {
+                alert(`✅ ${data.message}`);
+                loadFileList(); // 리스트 갱신
+            } else {
+                throw new Error(data.detail || "삭제 실패");
+            }
+        } catch (e) {
+            alert(`❌ 오류: ${e.message}`);
+        }
+    }
+
+    // 2. 파일 업로드 로직
+    function updateFileName() {
+        const file = document.getElementById('pdf-upload').files[0];
+        document.getElementById('file-name').innerText = file ? `📄 ${file.name}` : 'PDF 클릭/드래그 업로드';
+    }
+
+    async function uploadFile() {
+        const fileInput = document.getElementById('pdf-upload');
+        if (!fileInput.files[0]) return alert("파일을 선택해주세요.");
+
+        const btn = document.getElementById('upload-btn');
+        btn.disabled = true; btn.innerText = "⏳ 인덱싱 중...";
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        try {
+            const res = await fetch('/api/v1/documents/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (res.ok) {
+                alert(`✅ 학습 완료: ${data.message}`);
+                loadFileList(); 
+            } else throw new Error(data.detail);
+        } catch (err) {
+            alert(`❌ 업로드 실패: ${err.message}`);
+        } finally {
+            btn.disabled = false; btn.innerText = "벡터 DB에 학습시키기";
+            fileInput.value = ""; updateFileName();
+        }
+    }
+
+    // 3. 챗봇 메시지 전송 로직 (스트리밍)
+    function handleEnter(e) { if (e.key === 'Enter') sendMessage(); }
+
+    async function sendMessage() {
+        const input = document.getElementById('chat-input');
+        const message = input.value.trim();
+        const provider = document.getElementById('model-provider').value;
+        if (!message) return;
+
+        const chatBox = document.getElementById('chat-box');
+        const sendBtn = document.getElementById('send-btn');
+        
+        chatBox.innerHTML += `<div class="msg-bubble msg-user">${message}</div>`;
+        input.value = '';
+        input.disabled = true; sendBtn.disabled = true;
+        
+        const botMsgId = "bot-" + Date.now();
+        chatBox.innerHTML += `<div class="msg-bubble msg-bot" id="${botMsgId}"><span style="color:#94a3b8">생각 중...</span></div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+        
+        const botBubble = document.getElementById(botMsgId);
+
+        try {
+            const res = await fetch('/api/v1/documents/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message, provider: provider })
+            });
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let accumulatedText = "";
+
+            while(true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                accumulatedText += decoder.decode(value, {stream: true});
+                botBubble.innerHTML = marked.parse(accumulatedText);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        } catch (e) {
+            botBubble.innerHTML = `<span style="color:red;">❌ 서버 통신 오류가 발생했습니다.</span>`;
+        } finally {
+            input.disabled = false; sendBtn.disabled = false;
+            input.focus();
+        }
+    }
+
+
+    // 2. 파일 업로드 로직 (기존 유지, 성공 시 리스트 갱신 추가)
+    function updateFileName() {
+        const file = document.getElementById('pdf-upload').files[0];
+        document.getElementById('file-name').innerText = file ? `📄 ${file.name}` : 'PDF 클릭/드래그 업로드';
+    }
+
+    async function uploadFile() {
+        const fileInput = document.getElementById('pdf-upload');
+        if (!fileInput.files[0]) return alert("파일을 선택해주세요.");
+
+        const btn = document.getElementById('upload-btn');
+        btn.disabled = true; btn.innerText = "⏳ 인덱싱 중...";
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        try {
+            const res = await fetch('/api/v1/documents/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (res.ok) {
+                alert(`✅ 학습 완료: ${data.message}`);
+                loadFileList(); // 💡 업로드 성공 시 좌측 리스트 갱신
+            } else throw new Error(data.detail);
+        } catch (err) {
+            alert(`❌ 업로드 실패: ${err.message}`);
+        } finally {
+            btn.disabled = false; btn.innerText = "벡터 DB에 학습시키기";
+            fileInput.value = ""; updateFileName();
+        }
+    }
+
+    // 3. 챗봇 메시지 전송 로직 (스트리밍)
+    function handleEnter(e) { if (e.key === 'Enter') sendMessage(); }
+
+    async function sendMessage() {
+        const input = document.getElementById('chat-input');
+        const message = input.value.trim();
+
+        const provider = document.getElementById('model-provider').value;
+
+        if (!message) return;
+
+        const chatBox = document.getElementById('chat-box');
+        const sendBtn = document.getElementById('send-btn');
+        
+        // 유저 말풍선 추가
+        chatBox.innerHTML += `<div class="msg-bubble msg-user">${message}</div>`;
+        input.value = '';
+        input.disabled = true; sendBtn.disabled = true;
+        
+        // 봇 말풍선 틀(스트리밍 받을 곳) 미리 생성
+        const botMsgId = "bot-" + Date.now();
+        chatBox.innerHTML += `<div class="msg-bubble msg-bot" id="${botMsgId}"><span style="color:#94a3b8">생각 중...</span></div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+        
+        const botBubble = document.getElementById(botMsgId);
+
+        try {
+            const res = await fetch('/api/v1/documents/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message, provider: provider })
+            });
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let accumulatedText = "";
+
+            while(true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                accumulatedText += decoder.decode(value, {stream: true});
+                // Marked.js 로 실시간 마크다운 변환
+                botBubble.innerHTML = marked.parse(accumulatedText);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        } catch (e) {
+            botBubble.innerHTML = `<span style="color:red;">❌ 서버 통신 오류가 발생했습니다.</span>`;
+        } finally {
+            input.disabled = false; sendBtn.disabled = false;
+            input.focus();
+        }
+    }
+</script>
+
+</body>
+</html>

@@ -12,6 +12,8 @@ from sqlalchemy import inspect
 
 import os
 
+from app.api.document_routes import router as doc_router
+
 # DB 테이블 존재 여부 검사 및 안내 메시지 출력
 inspector = inspect(engine)
 table_exists = inspector.has_table("history_records")
@@ -47,6 +49,8 @@ def favicon():
 
 # API 라우터 등록
 app.include_router(router, prefix="/api/v1")
+
+app.include_router(doc_router, prefix="/api/v1/documents")
 
 @app.get("/health")
 def health_check():
